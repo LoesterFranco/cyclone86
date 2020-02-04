@@ -55,7 +55,7 @@ always @(posedge CLOCK) begin
     if (x >= horiz_back && x < horiz_visible + horiz_back &&
         y >= vert_back  && y < vert_visible  + vert_back)
     begin
-         {VGA_R, VGA_G, VGA_B} <= 12'h48C;
+         {VGA_R, VGA_G, VGA_B} <= X[3:0] == 0 || Y[3:0] == 0 ? 12'hFFF : 12'h555;
     end
     else {VGA_R, VGA_G, VGA_B} <= 12'b0;
 
