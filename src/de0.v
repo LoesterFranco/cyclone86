@@ -92,4 +92,14 @@ pll u0
 );
 // -----------------------------------------------------------------------
 
+vga u1
+(
+    .CLOCK  (clock_25),
+    .VGA_R  (VGA_R),
+    .VGA_G  (VGA_G),
+    .VGA_B  (VGA_B),
+    .VGA_HS (VGA_HS),
+    .VGA_VS (VGA_VS)
+);
+
 endmodule
