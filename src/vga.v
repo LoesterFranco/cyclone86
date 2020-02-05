@@ -13,37 +13,31 @@ module vga
 
 // ---------------------------------------------------------------------
 
-// Тайминги для горизонтальной развертки (640)
-parameter horiz_visible = 640;
-parameter horiz_back    = 48;
-parameter horiz_sync    = 96;
-parameter horiz_front   = 16;
-parameter horiz_whole   = 800;
+// Тайминги для горизонтальной развертки (800)
+parameter hz_visible = 800;
+parameter hz_front   = 56;
+parameter hz_sync    = 120;
+parameter hz_back    = 64;
+parameter hz_whole   = 1040;
 
-// Тайминги для вертикальной развертки (400)
-parameter vert_visible  = 400;
-parameter vert_back     = 35;
-parameter vert_sync     = 2;
-parameter vert_front    = 12;
-parameter vert_whole    = 449;
+// Тайминги для вертикальной развертки (600)
+parameter vt_visible  = 600;
+parameter vt_front    = 37;
+parameter vt_sync     = 6;
+parameter vt_back     = 23;
+parameter vt_whole    = 666;
 
 // ---------------------------------------------------------------------
-// H: [48 back] .. [640 vis] .. [16 front] .. [96 hsync]
-// V: [35 back] .. [400 vis] .. [12 front] .. [2 sync]
-// ---------------------------------------------------------------------
-assign VGA_HS = x >= (horiz_back + horiz_visible + horiz_front);
-assign VGA_VS = y >= ( vert_back +  vert_visible +  vert_front);
+assign VGA_HS = x >= (hz_back + hz_visible + hz_front); // POS.
+assign VGA_VS = y >= (vt_back + vt_visible + vt_front); // POS.
 // ---------------------------------------------------------------------
 
-reg  [9:0] x = 0;
-reg  [9:0] y = 0;
-
-// x,y = [0..w-1, 0..h-1]
-wire [9:0] X = x - horiz_back;
-wire [9:0] Y = y - vert_back;
-
-wire xmax = (x == horiz_whole - 1);
-wire ymax = (y == vert_whole  - 1);
+wire        xmax = (x == hz_whole - 1);
+wire        ymax = (y == vt_whole - 1);
+reg  [10:0] x    = 0;
+reg  [10:0] y    = 0;
+wire [9:0]  X    = x - hz_back; // X=[0..799]
+wire [9:0]  Y    = y - vt_back; // Y=[0..599]
 
 always @(posedge CLOCK) begin
 
@@ -52,10 +46,10 @@ always @(posedge CLOCK) begin
     y <= xmax ? (ymax ? 0 : y + 1) : y;
 
     // Вывод окна видеоадаптера
-    if (x >= horiz_back && x < horiz_visible + horiz_back &&
-        y >= vert_back  && y < vert_visible  + vert_back)
+    if (x >= hz_back && x < hz_visible + hz_back &&
+        y >= vt_back && y < vt_visible + vt_back)
     begin
-         {VGA_R, VGA_G, VGA_B} <= X[3:0] == 0 || Y[3:0] == 0 ? 12'hFFF : 12'h555;
+         {VGA_R, VGA_G, VGA_B} <= X >= 144 && X < 656 && Y >= 44 && Y < 556 ? 12'h080 : 12'h222;
     end
     else {VGA_R, VGA_G, VGA_B} <= 12'b0;
 
