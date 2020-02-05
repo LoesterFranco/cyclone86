@@ -49,7 +49,7 @@ always @(posedge CLOCK) begin
     if (x >= hz_back && x < hz_visible + hz_back &&
         y >= vt_back && y < vt_visible + vt_back)
     begin
-         {VGA_R, VGA_G, VGA_B} <= X >= 144 && X < 656 && Y >= 44 && Y < 556 ? 12'h080 : 12'h222;
+         {VGA_R, VGA_G, VGA_B} <= X >= 144 && X < 656 && Y >= 44 && Y < 556 ? 12'h48C : 12'h222;
     end
     else {VGA_R, VGA_G, VGA_B} <= 12'b0;
 
