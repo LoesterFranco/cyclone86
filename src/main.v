@@ -22,7 +22,7 @@ wire        wr;
 wire        rd;
 wire        locked = 1;
 
-initial $readmemh("bios/lo.hex", ram, 20'h0000);
+initial $readmemh("mem.hex", ram, 20'h0000);
 
 // Чтение и запись в память
 always @(posedge clk) begin
