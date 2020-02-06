@@ -27,7 +27,7 @@ initial $readmemh("bios/lo.hex", ram, 20'h0000);
 // Чтение и запись в память
 always @(posedge clk) begin
 
-            i_data  <= i_data;
+            i_data  <= i_data_;
     if (rd) i_data_ <= ram[ address ];
     if (wr) ram[ address ] <= o_data;
 
