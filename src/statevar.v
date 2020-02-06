@@ -13,3 +13,4 @@ reg       opsize        = 0;
 reg       adsize        = 0;
 reg       lock          = 0;
 reg [1:0] rep           = 0;    // 0: NZ, Z; 1: Наличие REP
+reg       fmodrm        = 0;    // =1 Есть байт modrm, прочесть его

@@ -4,7 +4,7 @@ module main;
 
 // ---------------------------------------------------------------------
 reg clk;    always #0.5 clk = ~clk;
-reg clock;  always #4.0 clock = ~clock;
+reg clock;  always #2.0 clock = ~clock;
 
 initial begin clk = 1; clock = 0; #2000 $finish; end
 initial begin $dumpfile("main.vcd"); $dumpvars(0, main); end
