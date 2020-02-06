@@ -1,0 +1,24 @@
+[*]
+[*] GTKWave Analyzer v3.3.86 (w)1999-2017 BSI
+[*] Thu Feb  6 10:49:05 2020
+[*]
+[dumpfile] "/disk/dev/de0x86/src/main.vcd"
+[dumpfile_mtime] "Thu Feb  6 10:48:49 2020"
+[dumpfile_size] 41223
+[savefile] "/disk/dev/de0x86/src/main.gtkw"
+[timestart] 0
+[size] 1920 1029
+[pos] -1 -1
+*-6.000000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] main.
+[sst_width] 248
+[signals_width] 134
+[sst_expanded] 1
+[sst_vpaned_height] 300
+@28
+[color] 3
+main.clk
+[color] 3
+main.clock
+[pattern_trace] 1
+[pattern_trace] 0
