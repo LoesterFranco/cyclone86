@@ -19,7 +19,6 @@ reg  [7:0]  i_data  = 0;
 reg  [7:0]  i_data_ = 0;
 wire [7:0]  o_data;
 wire        wr;
-wire        rd;
 wire        locked = 1;
 
 initial $readmemh("mem.hex", ram, 20'h0000);
@@ -27,8 +26,9 @@ initial $readmemh("mem.hex", ram, 20'h0000);
 // Чтение и запись в память
 always @(posedge clk) begin
 
-            i_data  <= i_data_;
-    if (rd) i_data_ <= ram[ address ];
+    i_data  <= i_data_;
+    i_data_ <= ram[ address ];
+    
     if (wr) ram[ address ] <= o_data;
 
 end
@@ -44,7 +44,6 @@ x86cpu u0
     address,
     i_data,
     o_data,
-    rd,
     wr
 );
 
