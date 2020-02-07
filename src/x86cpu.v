@@ -12,13 +12,12 @@ module x86cpu(
     output reg         wr
 );
 
-assign address = {cs[15:0], 4'h0} + eip[15:0];
+// Пока что реализован 16-битный RealMode
+assign address = address16;
 
-parameter state_init        = 0;
-parameter state_opcode      = 1;
-parameter state_modrm16     = 2;
-parameter state_modrm32     = 3;
-parameter state_exec        = 4;
+// Работает
+wire [19:0] address16 = sela ? {segment, 4'h0} +  ea[15:0] :
+                               {cs,      4'h0} + eip[15:0];
 
 `include "regfile.v"
 `include "statevar.v"
@@ -45,6 +44,14 @@ state_init: begin
     fmodrm      <= 0;
     segment_id  <= 0;
     segment_of  <= 0;
+    op_dir      <= 0;
+    op_bit      <= 0;
+    reg_w       <= 0;
+    ea          <= 0;
+    modrm       <= 0;
+    segment     <= 0;
+    modph       <= 0;
+    sela        <= 0;
 
     // Здесь также будет проверка на то, можно ли эту инструкцию
     // выполнять в данном сегменте
@@ -79,19 +86,26 @@ state_opcode: begin
 
             opcode[7:0] <= i_data;
 
+            // По умолчанию 8/16/32
+            op_bit      <= opsize && opcode[1] ? 2 : opcode[0];
+            op_dir      <= opcode[1];
+
             // Базовый набор инструкции
             if (opcode[8] == 1'b0) begin
 
+                // Определение наличия modrm
                 casex (i_data)
 
                     8'b00xx_x0xx, 8'b0110_001x, 8'b0110_10x1,
                     8'b1000_xxxx, 8'b1100_000x, 8'b1100_01xx,
                     8'b1101_00xx, 8'b1101_1xxx, 8'b1111_x11x:
-                        cstate <= (opsize | adsize) ? state_modrm32 : state_modrm16;
+                        cstate <= adsize ? state_modrm32 : state_modrm16;
                     default:
                         cstate <= state_exec;
 
                 endcase
+
+                // @todo Вычисление битности и направления
 
             end
             // Расширенный набор инструкции
@@ -107,9 +121,11 @@ state_opcode: begin
                     8'b1111_1111:
                         cstate <= state_exec;
                     default:
-                        cstate <= (opsize | adsize) ? state_modrm32 : state_modrm16;
+                        cstate <= adsize ? state_modrm32 : state_modrm16;
 
                 endcase
+
+                // @todo Вычисление битности и направления
 
             end
 
@@ -122,9 +138,64 @@ state_opcode: begin
 end
 
 // Разбор ModRM (16 битного)
-state_modrm16: begin
+// ---------------------------------------------------------------------
+state_modrm16: case (modph)
+
+    // Прочитать байт ModRM
+    0: begin
+
+        modph    <= 1;
+        modrm    <= i_data;
+        eip      <= eip + 1;
+
+        // Здесь будет зависеть от направления opdir: 0=(rm, r), 1=(r, rm)
+        reg_id_a <= op_dir ? i_data[5:3] : i_data[2:0];    // Прочитать регистровую часть
+        reg_id_b <= op_dir ? i_data[2:0] : i_data[5:3];    // Прочитать часть r/m часть
+
+        // Сегмент, котрый будет выбран по префиксу
+        if (segment_of)
+            case (segment_id)        
+                0: segment <= es;
+                1: segment <= cs;
+                2: segment <= ss;
+                3: segment <= ds;
+                4: segment <= fs;
+                5: segment <= gs;
+            endcase
+        else // @todo Выбор правильного сегмента
+            segment <= ds;
+
+    end
+
+    // Прочитать значение регистров
+    1: begin
+
+        modph   <= 2;
+
+        // Сохранить значение регистров в операндах
+        case (op_bit)
+            0: begin op1 <= reg_o_a[ 7:0]; op2 <= reg_o_b[7:0];  end
+            1: begin op1 <= reg_o_a[15:0]; op2 <= reg_o_b[15:0]; end
+            2: begin op1 <= reg_o_a[31:0]; op2 <= reg_o_b[31:0]; end
+            3: begin op1 <= reg_o_a;       op2 <= reg_o_b;       end
+        endcase
+
+        // Здесь возможен выход за пределы сознания
+
+    end
+
+endcase
+
+// Считывание Immediate 16/32/64
+// ---------------------------------------------------------------------
+state_imm: begin
 
 end
+
+// Чтение из памяти
+// Запись в память
+// Чтение из стека
+// Запись в стек
 
 endcase
 end
