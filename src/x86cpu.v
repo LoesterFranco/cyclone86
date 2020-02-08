@@ -154,7 +154,8 @@ state_modrm16: case (modph)
         reg_id_b <= op_dir ? i_data[2:0] : i_data[5:3];    // Прочитать часть r/m часть
 
         // Сегмент, котрый будет выбран по префиксу
-        if (segment_of) begin
+        if (segment_of)
+        begin
 
             case (segment_id)
                 0: segment <= es;
@@ -166,14 +167,14 @@ state_modrm16: case (modph)
             endcase
 
         end
-
         // Выбор сегмента DS: SS:
-        else casex (i_data)
+        else
+        casex (i_data)
 
             8'bxx_xxx_01x,
             8'b01_xxx_110,
             8'b10_xxx_110: segment <= ss;
-            default: segment <= ds;
+            default:       segment <= ds;
 
         endcase
 
@@ -185,45 +186,66 @@ state_modrm16: case (modph)
         // Сохранить значение регистров в операндах
         case (op_bit)
 
-            0: begin op1 <= reg_o_a[ 7:0]; op2 <= reg_o_b[7:0];  end
+            0: begin op1 <= reg_o_a[ 7:0]; op2 <= reg_o_b[ 7:0]; end
             1: begin op1 <= reg_o_a[15:0]; op2 <= reg_o_b[15:0]; end
             2: begin op1 <= reg_o_a[31:0]; op2 <= reg_o_b[31:0]; end
             3: begin op1 <= reg_o_a;       op2 <= reg_o_b;       end
 
         endcase
 
-        // Выбор типа считывания
-        casex (modrm)
-
-            8'b11_xxx_xxx: cstate <= state_exec;  // Переход к исполнению
-            8'b00_xxx_110: modph  <= 3;           // Читать displacement
-            default: modph <= 2;                  // Найти сумму
-
-        endcase
-
-        // Выбор регистра для вычисления EA
+        // Предварительное вычисление `ea`
         casex (modrm[2:0])
 
-            3'b000: begin reg_id_a <= id_bx; reg_id_b <= id_si; end
-            3'b001: begin reg_id_a <= id_bx; reg_id_b <= id_di; end
-            3'b010: begin reg_id_a <= id_bp; reg_id_b <= id_si; end
-            3'b011: begin reg_id_a <= id_bp; reg_id_b <= id_di; end
-            3'b100: begin reg_id_a <= id_si; end
-            3'b101: begin reg_id_a <= id_di; end
-            3'b110: begin reg_id_a <= id_bp; end
-            3'b111: begin reg_id_a <= id_bx; end
+            3'b000: ea <= ebx[15:0] + esi[15:0];
+            3'b001: ea <= ebx[15:0] + edi[15:0];
+            3'b010: ea <= ebp[15:0] + esi[15:0];
+            3'b011: ea <= ebp[15:0] + edi[15:0];
+            3'b100: ea <= esi[15:0];
+            3'b101: ea <= edi[15:0];
+            3'b110: ea <= ebp[15:0];
+            3'b111: ea <= ebx[15:0];
+
+        endcase
+
+        // Выбор режима считывания displacement
+        casex (modrm)
+
+            8'b00_xxx_110: modph  <= 2;           // Читать disp-16
+            8'b11_xxx_xxx: cstate <= state_exec;  // Переход к исполнению
+            8'b00_xxx_xxx: begin modph <= 5; sela <= 1; end
+            default:       modph  <= 3;
 
         endcase
 
     end
 
-    // Прочитать 2 регистра для вычисления EA
+    // Получение disp8/16
     2: begin
+
+        casex (modrm[7:6])
+
+            2'b00: begin modph <= 3; ea[15:0] <= i_data; end
+            2'b01: begin modph <= 4; ea[15:0] <= ea[15:0] + {{8{i_data[7]}}, i_data}; sela <= 1; end
+            2'b10: begin modph <= 3; ea[15:0] <= i_data + ea[15:0]; end
+
+        endcase
+
+        eip <= eip + 1;
 
     end
 
-    // Получение disp16/32
+    // Получение disp16
     3: begin
+
+        modph    <= 4;
+        sela     <= 1;
+        ea[15:8] <= ea[15:8] + i_data;
+        eip      <= eip + 1;
+
+    end
+
+    // Получение значения операнда из памяти
+    4: begin
 
     end
 
