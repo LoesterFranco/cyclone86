@@ -52,6 +52,7 @@ state_init: begin
     segment     <= 0;
     modph       <= 0;
     sela        <= 0;
+    rd          <= 1;
 
     // Здесь также будет проверка на то, можно ли эту инструкцию
     // выполнять в данном сегменте
@@ -153,8 +154,9 @@ state_modrm16: case (modph)
         reg_id_b <= op_dir ? i_data[2:0] : i_data[5:3];    // Прочитать часть r/m часть
 
         // Сегмент, котрый будет выбран по префиксу
-        if (segment_of)
-            case (segment_id)        
+        if (segment_of) begin
+
+            case (segment_id)
                 0: segment <= es;
                 1: segment <= cs;
                 2: segment <= ss;
@@ -162,25 +164,66 @@ state_modrm16: case (modph)
                 4: segment <= fs;
                 5: segment <= gs;
             endcase
-        else // @todo Выбор правильного сегмента
-            segment <= ds;
+
+        end
+
+        // Выбор сегмента DS: SS:
+        else casex (i_data)
+
+            8'bxx_xxx_01x,
+            8'b01_xxx_110,
+            8'b10_xxx_110: segment <= ss;
+            default: segment <= ds;
+
+        endcase
 
     end
 
-    // Прочитать значение регистров
+    // Прочитать значения регистров
     1: begin
-
-        modph   <= 2;
 
         // Сохранить значение регистров в операндах
         case (op_bit)
+
             0: begin op1 <= reg_o_a[ 7:0]; op2 <= reg_o_b[7:0];  end
             1: begin op1 <= reg_o_a[15:0]; op2 <= reg_o_b[15:0]; end
             2: begin op1 <= reg_o_a[31:0]; op2 <= reg_o_b[31:0]; end
             3: begin op1 <= reg_o_a;       op2 <= reg_o_b;       end
+
         endcase
 
-        // Здесь возможен выход за пределы сознания
+        // Выбор типа считывания
+        casex (modrm)
+
+            8'b11_xxx_xxx: cstate <= state_exec;  // Переход к исполнению
+            8'b00_xxx_110: modph  <= 3;           // Читать displacement
+            default: modph <= 2;                  // Найти сумму
+
+        endcase
+
+        // Выбор регистра для вычисления EA
+        casex (modrm[2:0])
+
+            3'b000: begin reg_id_a <= id_bx; reg_id_b <= id_si; end
+            3'b001: begin reg_id_a <= id_bx; reg_id_b <= id_di; end
+            3'b010: begin reg_id_a <= id_bp; reg_id_b <= id_si; end
+            3'b011: begin reg_id_a <= id_bp; reg_id_b <= id_di; end
+            3'b100: begin reg_id_a <= id_si; end
+            3'b101: begin reg_id_a <= id_di; end
+            3'b110: begin reg_id_a <= id_bp; end
+            3'b111: begin reg_id_a <= id_bx; end
+
+        endcase
+
+    end
+
+    // Прочитать 2 регистра для вычисления EA
+    2: begin
+
+    end
+
+    // Получение disp16/32
+    3: begin
 
     end
 

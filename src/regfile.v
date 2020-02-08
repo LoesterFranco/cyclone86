@@ -2,6 +2,15 @@
 // Регистровый файл, управление регистрами
 // ---------------------------------------------------------------------
 
+parameter id_eax = 0; parameter id_ax = 0;
+parameter id_ecx = 1; parameter id_cx = 1;
+parameter id_edx = 2; parameter id_dx = 2;
+parameter id_ebx = 3; parameter id_bx = 3;
+parameter id_esp = 4; parameter id_sp = 4;
+parameter id_ebp = 5; parameter id_bp = 5;
+parameter id_esi = 6; parameter id_si = 6; 
+parameter id_edi = 7; parameter id_di = 7;
+
 // Регистры общего назначения
 reg [31:0] eax = 32'h0000_0000;
 reg [31:0] ecx = 32'h0000_0000;
