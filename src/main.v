@@ -33,9 +33,9 @@ initial $readmemh("mem.hex", ram, 20'h0000);
 // Чтение и запись в память
 always @(posedge clk) begin
 
+    // Память
     i_data  <= i_data_;
     i_data_ <= ram[ address ];
-    
     if (wr) ram[ address ] <= o_data;
 
 end
@@ -48,11 +48,14 @@ x86cpu u0
 (
     clock,
     locked,
+
+    // Память
     address,
     i_data,
     o_data,
     wr,
 
+    // Регистры
     reg_a,
     reg_b,
     i_reg_a,

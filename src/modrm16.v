@@ -13,7 +13,7 @@ state_modrm16: case (modph)
 
         // Здесь будет зависеть от направления opdir: 0=(rm, r), 1=(r, rm)
         reg_a <= op_dir ? (op_bit ? i_data[5:3] : i_data[4:3]) : (op_bit ? i_data[2:0] : i_data[1:0]);
-        reg_b <= op_dir ? (op_bit ? i_data[2:0] : i_data[1:0]) : (op_bit ? i_data[2:0] : i_data[1:0]);
+        reg_b <= op_dir ? (op_bit ? i_data[2:0] : i_data[1:0]) : (op_bit ? i_data[5:3] : i_data[4:3]);
 
         // Сегмент, котрый будет выбран по префиксу
         if (segment_of)
@@ -59,7 +59,7 @@ state_modrm16: case (modph)
 
             0: begin
                 op1 <= reg_a[2] ? i_reg_a[15:8] : i_reg_a[ 7:0];
-                op2 <= reg_b[2] ? i_reg_b[15:8] : i_reg_b[ 7:0]; end                
+                op2 <= reg_b[2] ? i_reg_b[15:8] : i_reg_b[ 7:0]; end
             1: begin op1 <= i_reg_a[15:0]; op2 <= i_reg_b[15:0]; end
             2: begin op1 <= i_reg_a[31:0]; op2 <= i_reg_b[31:0]; end
             3: begin op1 <= i_reg_a;       op2 <= i_reg_b;       end
@@ -119,6 +119,8 @@ state_modrm16: case (modph)
 
     // Считывание операнда из памяти
     4: begin
+
+        // @todo Проверка доступа к сегменту : адресу. Если все плохо, то капец вызвать General Protection Error, гадство, чтоб тебя
 
         case (dispimm)
 
