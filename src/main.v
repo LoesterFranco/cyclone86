@@ -21,6 +21,13 @@ wire [7:0]  o_data;
 wire        wr;
 wire        locked = 1;
 
+wire [3:0]  reg_a;
+wire [3:0]  reg_b;
+reg  [63:0] i_reg_a;
+reg  [63:0] i_reg_b;
+wire [63:0] reg_o;
+wire        reg_w;
+
 initial $readmemh("mem.hex", ram, 20'h0000);
 
 // Чтение и запись в память
@@ -44,7 +51,14 @@ x86cpu u0
     address,
     i_data,
     o_data,
-    wr
+    wr,
+
+    reg_a,
+    reg_b,
+    i_reg_a,
+    i_reg_b,
+    reg_o,
+    reg_w
 );
 
 endmodule
