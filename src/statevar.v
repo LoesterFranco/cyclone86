@@ -39,6 +39,8 @@ reg        reg_w        = 0;    // Признак записи в регистр
 reg [ 1:0] op_bit       = 0;    // Битность: 0 (8 bit), 1 (16 bit), 2 (32 bit), 3 (64 bit)
 reg        op_dir       = 0;    // =0 (r/m, reg) =1 (reg, r/m)
 reg [ 2:0] modph        = 0;    // Фаза считывания modrm
+reg [ 2:0] dispsize     = 0;    // Кол-во байт для чтения disp (0 - 1, 7 - 8)
+reg [ 2:0] dispimm      = 0;    // Смещение
 reg [ 7:0] modrm        = 0;    // Сохраненное значение modrm, sib
 reg [ 7:0] sib          = 0;
 reg [31:0] ea           = 0;    // Эффективный адрес

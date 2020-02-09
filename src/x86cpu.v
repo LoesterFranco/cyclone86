@@ -52,6 +52,8 @@ state_init: begin
     segment     <= 0;
     modph       <= 0;
     sela        <= 0;
+    dispsize    <= 0;
+    dispimm     <= 0;
     rd          <= 1;
 
     // Здесь также будет проверка на то, можно ли эту инструкцию
@@ -178,6 +180,15 @@ state_modrm16: case (modph)
 
         endcase
 
+        // Размер immediate операнда
+        casex (i_data)
+
+            8'b00_xxx_110, // dword : word
+            8'b10_xxx_xxx: dispsize <= opsize ? 3 : 1;
+            default:       dispsize <= 0;
+
+        endcase
+
     end
 
     // Прочитать значения регистров
@@ -244,8 +255,39 @@ state_modrm16: case (modph)
 
     end
 
-    // Получение значения операнда из памяти
+    // Считывание операнда из памяти
     4: begin
+
+        case (dispimm)
+
+            // 8, 16 bit
+            0: if (op_dir) op2        <= i_data; else op1        <= i_data;
+            1: if (op_dir) op2[15: 8] <= i_data; else op1[15: 8] <= i_data;
+            // 32 bit
+            2: if (op_dir) op2[23:16] <= i_data; else op1[23:16] <= i_data;
+            3: if (op_dir) op2[31:24] <= i_data; else op1[31:24] <= i_data;
+            /* 64 bit
+            4: if (op_dir) op2 <= i_data; else op1 <= i_data;
+            5: if (op_dir) op2 <= i_data; else op1 <= i_data;
+            6: if (op_dir) op2 <= i_data; else op1 <= i_data;
+            7: if (op_dir) op2 <= i_data; else op1 <= i_data;
+            */
+
+        endcase
+
+        // При достижении окончания считывания
+        if (dispsize == 0) begin
+
+            ea       <= ea - dispimm;
+            cstate   <= state_exec;
+
+        end else begin
+
+            dispsize <= dispsize - 1;
+            dispimm  <= dispimm + 1;
+            ea       <= ea + 1;
+
+        end
 
     end
 
