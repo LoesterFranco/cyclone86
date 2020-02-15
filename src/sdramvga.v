@@ -32,8 +32,12 @@ module sdramvga
     output wire         dram_udqm      // High Data QMask
 );
 
+parameter videomemory_start     = 0;
+parameter videomemory_row_width = 160; // 640 x 480 x 4 цвета
+
 // Command modes                 RCW
 // ---------------------------------------------------------------------
+// Команды
 localparam cmd_loadmode     = 3'b000;
 localparam cmd_refresh      = 3'b001;
 localparam cmd_precharge    = 3'b010;
@@ -42,6 +46,12 @@ localparam cmd_write        = 3'b100;
 localparam cmd_read         = 3'b101;
 localparam cmd_burst_term   = 3'b110;
 localparam cmd_nop          = 3'b111;
+
+// Режимы работы машины состояний
+localparam state_idle      = 0;
+localparam state_update    = 1;
+localparam state_activate  = 2;
+localparam state_close_row = 3;
 
 `ifdef ICARUS
 localparam init_time = 0;
@@ -71,7 +81,7 @@ assign dram_udqm = ~i_address[0];
 assign {dram_addr                  } = chipinit ? dram_init    : dram_address;
 assign {dram_ras, dram_cas, dram_we} = chipinit ? command_init : command;
 
-// Команды для памяти
+// Команды для памяти, регистры, текущее состояние
 // ---------------------------------------------------------------------
 reg             chipinit        = 1;
 reg  [14:0]     icounter        = 0;
@@ -79,6 +89,11 @@ reg  [2:0]      command         = cmd_nop;
 reg  [2:0]      command_init    = cmd_nop;
 reg  [12:0]     dram_init       = 12'b1_00000_00000;
 reg  [12:0]     dram_address    = 0;
+reg  [24:0]     current_addr    = 0;
+reg  [ 9:0]     current_x       = 0;
+reg  [ 9:0]     current_y       = 0;
+reg  [ 3:0]     current_state   = state_idle;
+reg  [ 3:0]     cursor          = 0;
 
 // Инициализация чипа памяти
 // Параметры: BurstFull, Sequential, CASLatency=2
@@ -100,6 +115,41 @@ if (chipinit) begin
 
 end
 
+// Основной обработчик (видеокарта, ввод-вывод в память)
+// Работает после инициализации памяти
+// ---------------------------------------------------------------------
+always @(posedge i_clock_100_mhz)
+if (~chipinit) begin
+
+    case (current_state)
+
+        // Режим ожидания чтения, записи или строки
+        state_idle: begin
+
+            // Требуется перезагрузка строки (если она в видеокадре)
+            if ((current_y[0] ^ Y[0]) && (Y < vt_visible)) begin
+
+                current_y       <= Y;
+                current_addr    <= Y * videomemory_row_width + videomemory_start;
+                current_state   <= state_activate;
+                current_x       <= 0;
+                cursor          <= 1'b0;
+                o_ready         <= 1'b0;
+
+            end
+            // Готовность всех данных
+            else begin
+
+                o_ready <= 1'b1;
+
+            end
+
+        end
+
+    endcase
+
+end
+
 // ---------------------------------------------------------------------
 // Видеоадаптер
 // ---------------------------------------------------------------------
@@ -112,11 +162,11 @@ parameter hz_back    = 48;
 parameter hz_whole   = 800;
 
 // Тайминги для вертикальной развертки (480)
-parameter vt_visible  = 480;
-parameter vt_front    = 10;
-parameter vt_sync     = 2;
-parameter vt_back     = 33;
-parameter vt_whole    = 525;
+parameter vt_visible = 480;
+parameter vt_front   = 10;
+parameter vt_sync    = 2;
+parameter vt_back    = 33;
+parameter vt_whole   = 525;
 
 // ---------------------------------------------------------------------
 assign vga_hs = x  < (hz_back + hz_visible + hz_front); // NEG.
