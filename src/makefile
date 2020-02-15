@@ -1,5 +1,5 @@
 all:
-	iverilog -g2005-sv -DICARUS=1 x86cpu.v main.v -o main.qqq 
+	iverilog -g2005-sv -DICARUS=1 x86cpu.v main.v sdramvga.v -o main.qqq 
 	vvp main.qqq >> /dev/null
 
 wave:

@@ -68,7 +68,7 @@ assign GPIO_0  = 36'hzzzzzzzz;
 assign GPIO_1  = 36'hzzzzzzzz;
 
 // LED OFF
-assign HEX0 = 7'b1111111;
+assign HEX0 = ps2_data_register; // 7'b1111111;
 assign HEX1 = 7'b1111111;
 assign HEX2 = 7'b1111111;
 assign HEX3 = 7'b1111111;
@@ -92,6 +92,52 @@ pll u0(
     .m100  (clock_100),
     .m106  (clock_106),
 );
+
+// -----------------------------------------------------------------------
+// Клавиатура
+// -----------------------------------------------------------------------
+reg         kbd_reset           = 1'b0;
+reg  [7:0]  ps2_command         = 1'b0;
+reg         ps2_command_send    = 1'b0;
+wire        ps2_command_was_sent;
+wire        ps2_error_communication_timed_out;
+wire [7:0]  ps2_data;
+wire        ps2_data_clk;
+
+ps2_keyboard ukdb(
+
+    /* Вход */
+    .CLOCK_50       (CLOCK_50),
+    .reset          (kbd_reset),
+    .the_command    (ps2_command),
+    .send_command   (ps2_command_send),
+
+    /* Ввод-вывод */
+    .PS2_CLK        (PS2_CLK),
+    .PS2_DAT        (PS2_DAT),
+
+    /* Статус команды */
+    .command_was_sent               (ps2_command_was_sent),
+    .error_communication_timed_out  (ps2_error_communication_timed_out),
+
+    /* Выход полученных */
+    .received_data      (ps2_data),
+    .received_data_en   (ps2_data_clk)
+);
+
+reg [6:0] ps2_data_register;
+
+// Данные принимаются только по тактовому сигналу и при наличии ps2_data_clk
+always @(posedge CLOCK_50) begin
+
+    if (ps2_data_clk) begin
+        ps2_data_register <= ps2_data;
+    end
+
+end
+
+// -----------------------------------------------------------------------
+// Видеодаптер
 // -----------------------------------------------------------------------
 
 vga u1(

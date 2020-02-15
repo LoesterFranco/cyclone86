@@ -1,172 +1,17 @@
 /*
- * Эмулятор процессора x86. Частота 12.5 МГц
+ * Эмулятор процессора x86
  */
 
 module x86cpu(
 
-    input  wire        clock,
+    input  wire        clock,       // Опорная частота
     input  wire        locked,      // Разрешение исполнения инструкции
 
     // Доступ в память
-    output wire [19:0] address,     // Адрес в памяти
+    output wire [31:0] o_address,   // Адрес в памяти
     input  wire [7:0]  i_data,
     output reg  [7:0]  o_data,
-    output reg         wr,
-
-    // Регистровый файл (64 bit)
-    output reg  [3:0]  reg_a,
-    output reg  [3:0]  reg_b,
-    input  wire [63:0] i_reg_a,
-    input  wire [63:0] i_reg_b,
-    output reg  [63:0] reg_o,
-    output reg         reg_w
+    output reg         o_wr
 );
-
-// Пока что реализован 16-битный RealMode
-assign address = address16;
-
-// Работает
-wire [19:0] address16 = sela ? {segment, 4'h0} +  ea[15:0] :
-                               {cs,      4'h0} + eip[15:0];
-
-`include "regfile.v"
-`include "statevar.v"
-
-// =====================
-// Устройство управления
-// =====================
-
-always @(posedge clock)
-if (locked) begin
-case (cstate)
-
-// Инициализация перед считыванием инструкции
-// ---------------------------------------------------------------------
-state_init: begin
-
-    cstate      <= state_opcode;
-    opcode      <= 0;
-    o_data      <= 0;
-    opsize      <= 0;       // зависит от настроек текущего сегмента кода
-    adsize      <= 0;       // зависит от настроек текущего сегмента кода
-    lock        <= 0;
-    rep         <= 0;
-    fmodrm      <= 0;
-    segment_id  <= 0;
-    segment_of  <= 0;
-    op_dir      <= 0;
-    op_bit      <= 0;
-    reg_a       <= 0;
-    reg_b       <= 0;
-    reg_w       <= 0;
-    reg_o       <= 0;
-    ea          <= 0;
-    modrm       <= 0;
-    segment     <= 0;
-    modph       <= 0;
-    sela        <= 0;
-    dispsize    <= 0;
-    dispimm     <= 0;
-    rd          <= 1;
-
-    // Здесь также будет проверка на то, можно ли эту инструкцию
-    // выполнять в данном сегменте
-
-    // И тут же будет тест на IQ... то есть, IRQ, ошибся
-
-end
-
-// Считывание и разбор префиксов и самого опкода
-// ---------------------------------------------------------------------
-state_opcode: begin
-
-    case (i_data)
-
-        // Расширение опкода
-        8'b0000_1111: opcode[8] <= 1'b1;
-
-        // Префиксы сегментов или даже селекторов
-        8'b001x_x110: begin segment_of <= 1'b1; segment_id <=  i_data[4:3]; end
-        8'b0110_010x: begin segment_of <= 1'b1; segment_id <= {i_data[0], 2'b00}; end
-
-        // Расширение операнда и адреса
-        8'b0110_0110: opsize <= ~opsize;
-        8'b0110_0111: adsize <= ~adsize;
-
-        // Префикс REP: может пригодиться в хозяйстве
-        8'b1111_001x: rep <= {1'b1, i_data[0]}; // REPNZ, REPZ
-        8'b1111_0000: lock <= 1;
-
-        // Запись опкода
-        default: begin
-
-            opcode[7:0] <= i_data;
-
-            // По умолчанию 8/16/32
-            op_bit      <= opsize && opcode[1] ? 2 : opcode[0];
-            op_dir      <= opcode[1];
-
-            // Базовый набор инструкции
-            if (opcode[8] == 1'b0) begin
-
-                // Определение наличия modrm
-                casex (i_data)
-
-                    8'b00xx_x0xx, 8'b0110_001x, 8'b0110_10x1,
-                    8'b1000_xxxx, 8'b1100_000x, 8'b1100_01xx,
-                    8'b1101_00xx, 8'b1101_1xxx, 8'b1111_x11x:
-                        cstate <= adsize ? state_modrm32 : state_modrm16;
-                    default:
-                        cstate <= state_exec;
-
-                endcase
-
-                // @todo Вычисление битности и направления
-
-            end
-            // Расширенный набор инструкции
-            else begin
-
-                casex (i_data)
-
-                    8'b0000_01xx, 8'b0000_10xx, 8'b0000_11x0,
-                    8'b0010_01x1, 8'b0011_0xxx, 8'b0011_10x1,
-                    8'b0011_11xx, 8'b0111_0111, 8'b0111_101x,
-                    8'b1000_xxxx, 8'b1010_x00x, 8'b1010_0x10,
-                    8'b1010_1010, 8'b1010_0111, 8'b1100_1xxx,
-                    8'b1111_1111:
-                        cstate <= state_exec;
-                    default:
-                        cstate <= adsize ? state_modrm32 : state_modrm16;
-
-                endcase
-
-                // @todo Вычисление битности и направления
-
-            end
-
-        end
-
-    endcase
-
-    eip <= eip + 1;
-
-end
-
-`include "modrm16.v"
-
-// Считывание Immediate 16/32/64
-// ---------------------------------------------------------------------
-state_imm: begin
-
-end
-
-// Чтение из памяти
-// Запись в память
-// Чтение из стека
-// Запись в стек
-
-endcase
-end
 
 endmodule
