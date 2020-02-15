@@ -149,11 +149,20 @@ wire [15:0] vb_data;
 wire [15:0] vb_read;
 wire        vb_wren;
 
+wire ready;
+
 sdramvga u1
 (
     // Тактовая частота 100 МГц (SDRAM) 25 МГц (видео)
     .clock_100_mhz  (clock_100),
     .clock_25_mhz   (clock_25),
+
+    // Интерфейс процессора
+    .i_address      (address),
+    .i_we           (wren),
+    .i_data         (data),
+    //.o_data()
+    .o_ready        (ready),
 
     // Физический интерфейс
     .dram_clk       (DRAM_CLK),
@@ -182,8 +191,8 @@ sdramvga u1
 );
 
 // Буфер для видеострок
-sdramvb u2(
-
+sdramvb u2
+(
     .clock          (clock_100),
     .address_a      (vb_address_w),
     .address_b      (vb_address_r),
@@ -191,6 +200,28 @@ sdramvb u2(
     .wren_a         (vb_wren),
     .q_b            (vb_read)
 );
+
+
+// ------------------------------------
+reg [9:0]   ct;
+reg [25:0]  address;
+reg [7:0]   data;
+reg         wren;
+
+always @(posedge clock_25) if (ready) begin
+      
+    if (ct == 0 && KEY[0] == 0) begin
+
+        data    <= KEY[1] ? 8'h29 : {address[3:0], address[3:0]};
+        address <= address < 153600 ? address + 1 : 0;
+        wren    <= 1;
+
+    end
+    else begin wren <= 0; end
+
+    ct <= ct + 1;
+
+end
 
 endmodule
 

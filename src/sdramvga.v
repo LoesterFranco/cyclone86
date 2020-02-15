@@ -61,6 +61,7 @@ localparam state_idle      = 0;
 localparam state_update    = 1;
 localparam state_activate  = 2;
 localparam state_close_row = 3;
+localparam state_write     = 4;
 
 `ifdef ICARUS
 localparam init_time = 0;
@@ -102,6 +103,7 @@ reg  [ 7:0]     current_x       = 0;
 reg  [ 8:0]     current_y       = 0;
 reg  [ 3:0]     current_state   = state_idle;
 reg  [ 3:0]     cursor          = 0;
+reg  [25:0]     w_address       = 0;
 
 // Инициализация чипа памяти
 // Параметры: BurstFull, Sequential, CASLatency=2
@@ -136,6 +138,7 @@ if (~chipinit) begin
         state_idle: begin
 
             // @todo Высший приоритет на установку o_ready <= 0 для чтения/записи
+            // (i_we && (i_address != w_address))
 
             // Требуется перезагрузка строки (если она в видеокадре)
             // 160 слов = 4 цвета каждое слово
@@ -151,7 +154,24 @@ if (~chipinit) begin
                 dram_udqm     <= 1'b0;
 
             end
-            // @todo Чтение/Запись в память
+            
+            // Обнаружена ЗАПИСЬ в новую ячейку памяти
+            else if (i_we && (i_address != w_address)) begin
+
+                command       <= cmd_activate;
+                w_address     <= i_address;
+                current_addr  <= i_address[25:1];
+                address       <= i_address[23:11];
+                dram_ba       <= i_address[25:24];
+                cursor        <= 0;
+                o_ready       <= 1'b0;
+                o_data        <= i_data;
+                current_state <= state_write;
+                dram_udqm     <=  i_address[0];
+                dram_ldqm     <= ~i_address[0];
+
+            end
+            
             // Готовность всех данных
             else begin o_ready <= 1'b1; end
 
@@ -273,6 +293,43 @@ if (~chipinit) begin
 
         endcase
 
+        // Запись в память
+        state_write: case (cursor)
+
+            // Запись
+            2: begin
+            
+                cursor  <= 3;
+                command <= cmd_write;
+                address <= {1'b1, current_addr[9:0]};
+
+            end
+
+            // Перезарядка банка, закрытие строки
+            5: begin
+            
+                cursor      <= 6;
+                command     <= cmd_precharge;
+                address[10] <= 1'b1;
+
+            end
+
+            // Переход к IDLE
+            6: begin
+
+                cursor        <= 0;
+                command       <= cmd_nop;
+                dram_udqm     <= 1'b1;
+                dram_ldqm     <= 1'b1;
+                current_state <= state_idle;
+
+            end
+
+            // NOP (ожидание активации строки)
+            default: begin command <= cmd_nop; cursor <= cursor + 1; end
+
+        endcase
+
     endcase
 
 end
@@ -304,11 +361,11 @@ wire        xmax = (x == hz_whole - 1);
 wire        ymax = (y == vt_whole - 1);
 reg  [10:0] x    = 0;
 reg  [10:0] y    = 0;
-wire [9:0]  X    = x - hz_back;     // X=[0..639]
+wire [9:0]  X    = x - hz_back + 5;     // X=[0..639]
 wire [8:0]  Y    = y - vt_back;     // Y=[0..479]
 
 // Вычисление цвета
-reg  [ 2:0] color_id;
+reg  [ 3:0] color_id;
 reg  [11:0] color_rgb;
 reg  [ 1:0] color_ax;
 
