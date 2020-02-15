@@ -78,7 +78,7 @@ assign dram_ldqm =  i_address[0];
 assign dram_udqm = ~i_address[0];
 
 // Адрес и команда
-assign {dram_addr                  } = chipinit ? dram_init    : dram_address;
+assign {dram_addr                  } = chipinit ? dram_init    : address;
 assign {dram_ras, dram_cas, dram_we} = chipinit ? command_init : command;
 
 // Команды для памяти, регистры, текущее состояние
@@ -88,7 +88,7 @@ reg  [14:0]     icounter        = 0;
 reg  [2:0]      command         = cmd_nop;
 reg  [2:0]      command_init    = cmd_nop;
 reg  [12:0]     dram_init       = 12'b1_00000_00000;
-reg  [12:0]     dram_address    = 0;
+reg  [12:0]     address    = 0;
 reg  [24:0]     current_addr    = 0;
 reg  [ 9:0]     current_x       = 0;
 reg  [ 9:0]     current_y       = 0;
@@ -123,7 +123,7 @@ if (~chipinit) begin
 
     case (current_state)
 
-        // Режим ожидания чтения, записи или строки
+        // Режим ожидания чтения, записи, или новой строки
         state_idle: begin
 
             // Требуется перезагрузка строки (если она в видеокадре)
@@ -145,6 +145,59 @@ if (~chipinit) begin
             end
 
         end
+
+        // Активировать строку и загрузить конвейер
+        state_activate: case (cursor)
+
+            // Задать банк 23:22 | 21:10 | 9:0
+            0: begin
+            
+                cursor  <= 1;
+                command <= cmd_activate;
+                address <= current_addr[22:10];
+                dram_ba <= current_addr[24:23];
+
+            end
+
+            // 1,2,3 ожидание принятия команды `activate`
+
+            // Задать адрес, и загрузить в очередь
+            4: begin
+
+                cursor  <= 5;
+                command <= cmd_read;
+                address <= {1'b1, current_addr[9:0]};
+
+            end
+            
+            // Активация #1 
+            5: begin
+
+                cursor       <= 6;
+                current_addr <= current_addr + 1;
+                address[9:0] <= address[9:0] + 1;
+
+            end
+
+            // Активация #2
+            6: begin
+
+                cursor        <= 0;
+                current_state <= state_activate;
+                current_addr  <= current_addr + 1;
+                address[9:0]  <= address[9:0] + 1;
+                
+            end
+            
+            // По умолчанию NOP
+            default: begin
+
+                command <= cmd_nop;
+                cursor  <= cursor + 1;
+
+            end
+
+        endcase
 
     endcase
 
