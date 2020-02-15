@@ -203,18 +203,37 @@ sdramvb u2
 
 
 // ------------------------------------
-reg [9:0]   ct;
-reg [25:0]  address;
+reg [9:0]   ct; // 9:0
+reg [25:0]  address = 0;
 reg [7:0]   data;
 reg         wren;
 
+// ---
+reg [8:0] wx;
+reg [8:0] wy;
+
+
+// 1 строка занимает 512 байт (но использует только 320 байт)
 always @(posedge clock_25) if (ready) begin
-      
+
+    /*
+    data    <= 8'h33;
+    address <= address < 512*480 ? address + 1 : 0;
+    wren    <= 1;
+    */
+
     if (ct == 0 && KEY[0] == 0) begin
 
-        data    <= KEY[1] ? 8'h29 : {address[3:0], address[3:0]};
-        address <= address < 153600 ? address + 1 : 0;
-        wren    <= 1;
+        address <= address < 320*200 ? address + 1 : 0;
+        
+        data <= KEY[1] ? 
+        {
+            address[3:0] ^ address[13:10],
+            address[3:0] ^ address[13:10]
+            
+        } : 8'h29;
+        
+        wren <= 1;
 
     end
     else begin wren <= 0; end

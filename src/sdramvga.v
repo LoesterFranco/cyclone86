@@ -63,6 +63,10 @@ localparam state_activate  = 2;
 localparam state_close_row = 3;
 localparam state_write     = 4;
 
+localparam request_none    = 0;
+localparam request_write   = 1;
+localparam request_read    = 2;
+
 `ifdef ICARUS
 localparam init_time = 0;
 `else
@@ -100,10 +104,11 @@ reg  [12:0]     dram_init       = 12'b1_00000_00000;
 reg  [12:0]     address         = 0;
 reg  [24:0]     current_addr    = 0;
 reg  [ 7:0]     current_x       = 0;
-reg  [ 8:0]     current_y       = 0;
+reg             current_y       = 0;
 reg  [ 3:0]     current_state   = state_idle;
 reg  [ 3:0]     cursor          = 0;
 reg  [25:0]     w_address       = 0;
+reg  [ 1:0]     rw_request      = 0;
 
 // Инициализация чипа памяти
 // Параметры: BurstFull, Sequential, CASLatency=2
@@ -137,38 +142,43 @@ if (~chipinit) begin
         // -----------------------------------------
         state_idle: begin
 
-            // @todo Высший приоритет на установку o_ready <= 0 для чтения/записи
-            // (i_we && (i_address != w_address))
+            // Высший приоритет на установку o_ready <= 0 для чтения/записи
+            if ((i_address != w_address) && (rw_request == request_none)) begin
 
+                rw_request  <= i_we ? request_write : request_read;
+                w_address   <= i_address;
+                o_ready     <= 1'b0;
+
+                if (i_we) o_data <= i_data;
+
+            end
             // Требуется перезагрузка строки (если она в видеокадре)
             // 160 слов = 4 цвета каждое слово
-            if ((current_y[0] ^ Y[0]) && (Y < 480)) begin
+            else if ((current_y ^ Y[0]) && (Y < 480)) begin
 
                 current_state <= state_activate;
-                current_addr  <= Y*160 + videomemory_start;
+                current_addr  <= Y*256 + 2 + videomemory_start; // 160
                 current_x     <= 0;
-                current_y     <= Y;
+                current_y     <= Y[0];
                 cursor        <= 1'b0;
                 o_ready       <= 1'b0;
                 dram_ldqm     <= 1'b0;
                 dram_udqm     <= 1'b0;
 
             end
-            
             // Обнаружена ЗАПИСЬ в новую ячейку памяти
-            else if (i_we && (i_address != w_address)) begin
+            else if (rw_request) begin
 
-                command       <= cmd_activate;
-                w_address     <= i_address;
-                current_addr  <= i_address[25:1];
-                address       <= i_address[23:11];
-                dram_ba       <= i_address[25:24];
                 cursor        <= 0;
-                o_ready       <= 1'b0;
-                o_data        <= i_data;
+                command       <= cmd_activate;
+                rw_request    <= request_none;
                 current_state <= state_write;
-                dram_udqm     <=  i_address[0];
-                dram_ldqm     <= ~i_address[0];
+
+                current_addr  <=  w_address[25:1];
+                address       <=  w_address[23:11];
+                dram_ba       <=  w_address[25:24];
+                dram_udqm     <=  w_address[0];
+                dram_ldqm     <= ~w_address[0];
 
             end
             
@@ -186,8 +196,8 @@ if (~chipinit) begin
 
                 cursor  <= 1;
                 command <= cmd_activate;
-                address <= current_addr[22:10]; // 13 бит
-                dram_ba <= current_addr[24:23]; // 2 бита
+                address <= current_addr[22:10]; // 13 бит [12:0]
+                dram_ba <= current_addr[24:23]; // 2 бита [ 1:0]
 
             end
 
@@ -205,7 +215,7 @@ if (~chipinit) begin
             // Активация #1
             5: begin
 
-                cursor       <= 6;
+                cursor       <= cursor + 1;
                 current_addr <= current_addr + 1;
                 address[9:0] <= address[9:0] + 1;
 
@@ -245,10 +255,8 @@ if (~chipinit) begin
             current_x    <= current_x + 1;
             address[9:0] <= address[9:0] + 1;
 
-            // Закрыть строку по завершении
-            // Закрыть строку, если достигли конца банка
-            if (current_x == 159 || (address[9:0] == 10'h001))
-                current_state <= state_close_row;
+            // Закрыть строку по ее завершении
+            if (current_x == 159) current_state <= state_close_row;
 
         end
 
@@ -263,37 +271,21 @@ if (~chipinit) begin
                 address[10] <= 1'b1;
                 vb_wren     <= 1'b0;
                 cursor      <= 1;
+                dram_ldqm   <= 1'b1;
+                dram_udqm   <= 1'b1;
 
             end
 
             // Ожидание завершения перезарядки банка
-            1: begin cursor <= 2; command <= cmd_nop; end
+            1: begin cursor <= cursor + 1; command <= cmd_nop; end
 
             // Решение о продлении считывания из памяти
-            2: begin
-
-                // Продление считывания из памяти
-                if (current_x < 160) begin
-
-                    cursor        <= 0;
-                    current_state <= state_activate;
-                    current_addr  <= current_addr - 2;
-
-                end
-                // Строка закончилась, переход к IDLE
-                else begin
-
-                    current_state <= state_idle;
-                    dram_ldqm     <= 1'b1;
-                    dram_udqm     <= 1'b1;
-
-                end
-
-            end
+            2: current_state <= state_idle;
 
         endcase
 
         // Запись в память
+        // -----------------------------------------
         state_write: case (cursor)
 
             // Запись
@@ -311,6 +303,8 @@ if (~chipinit) begin
                 cursor      <= 6;
                 command     <= cmd_precharge;
                 address[10] <= 1'b1;
+                dram_udqm   <= 1'b1;
+                dram_ldqm   <= 1'b1;
 
             end
 
@@ -319,8 +313,6 @@ if (~chipinit) begin
 
                 cursor        <= 0;
                 command       <= cmd_nop;
-                dram_udqm     <= 1'b1;
-                dram_ldqm     <= 1'b1;
                 current_state <= state_idle;
 
             end
@@ -361,8 +353,10 @@ wire        xmax = (x == hz_whole - 1);
 wire        ymax = (y == vt_whole - 1);
 reg  [10:0] x    = 0;
 reg  [10:0] y    = 0;
-wire [9:0]  X    = x - hz_back + 5;     // X=[0..639]
-wire [8:0]  Y    = y - vt_back;     // Y=[0..479]
+
+// Скорректированное значение (X, Y) относительно конвейеров и порожека
+wire [9:0]  X    = x - hz_back + 5; // X=[0..639]
+wire [8:0]  Y    = y - vt_back + 1; // Y=[0..479]
 
 // Вычисление цвета
 reg  [ 3:0] color_id;
