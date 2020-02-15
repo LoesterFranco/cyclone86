@@ -68,7 +68,7 @@ assign GPIO_0  = 36'hzzzzzzzz;
 assign GPIO_1  = 36'hzzzzzzzz;
 
 // LED OFF
-assign HEX0 = ps2_data_register; // 7'b1111111;
+assign HEX0 = 7'b1111111;
 assign HEX1 = 7'b1111111;
 assign HEX2 = 7'b1111111;
 assign HEX3 = 7'b1111111;
@@ -131,7 +131,7 @@ reg [6:0] ps2_data_register;
 always @(posedge CLOCK_50) begin
 
     if (ps2_data_clk) begin
-        ps2_data_register <= ps2_data;
+        // stub
     end
 
 end
@@ -140,13 +140,18 @@ end
 // Видеодаптер
 // -----------------------------------------------------------------------
 
-vga u1(
-    .CLOCK  (clock_50),
-    .VGA_R  (VGA_R),
-    .VGA_G  (VGA_G),
-    .VGA_B  (VGA_B),
-    .VGA_HS (VGA_HS),
-    .VGA_VS (VGA_VS)
+sdramvga u1
+(
+    // Тактовая частота 100 МГц (SDRAM) 25 МГц (видео)
+    .i_clock_100_mhz    (clock_100),
+    .i_clock_25_mhz     (clock_25),
+
+    // Видеоадаптер встроен в SDRAM
+    .vga_r  (VGA_R),
+    .vga_g  (VGA_G),
+    .vga_b  (VGA_B),
+    .vga_hs (VGA_HS),
+    .vga_vs (VGA_VS),
 );
 
 endmodule

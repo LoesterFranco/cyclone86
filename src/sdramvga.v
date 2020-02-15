@@ -2,8 +2,8 @@
  * Модуль памяти 64Мб для DE0-CV с видеопамятью 640 x 480 x (4|8|16) bit
  */
 
-module sdram(
-
+module sdramvga
+(
     // Тактовая частота 100 МГц (SDRAM) 25 МГц (видео)
     input  wire         i_clock_100_mhz,
     input  wire         i_clock_25_mhz,
@@ -28,8 +28,8 @@ module sdram(
     output wire         dram_cas,      // CAS
     output wire         dram_ras,      // RAS
     output wire         dram_we,       // Write Enabled
-    output reg          dram_ldqm,     // Low Data QMask
-    output reg          dram_udqm      // High Data QMask
+    output wire         dram_ldqm,     // Low Data QMask
+    output wire         dram_udqm      // High Data QMask
 );
 
 // Command modes                 RCW
@@ -97,6 +97,52 @@ if (chipinit) begin
     endcase
 
     icounter <= icounter + 1;
+
+end
+
+// ---------------------------------------------------------------------
+// Видеоадаптер
+// ---------------------------------------------------------------------
+
+// Тайминги для горизонтальной развертки (640)
+parameter hz_visible = 640;
+parameter hz_front   = 16;
+parameter hz_sync    = 96;
+parameter hz_back    = 48;
+parameter hz_whole   = 800;
+
+// Тайминги для вертикальной развертки (480)
+parameter vt_visible  = 480;
+parameter vt_front    = 10;
+parameter vt_sync     = 2;
+parameter vt_back     = 33;
+parameter vt_whole    = 525;
+
+// ---------------------------------------------------------------------
+assign vga_hs = x  < (hz_back + hz_visible + hz_front); // NEG.
+assign vga_vs = y >= (vt_back + vt_visible + vt_front); // POS.
+// ---------------------------------------------------------------------
+
+wire        xmax = (x == hz_whole - 1);
+wire        ymax = (y == vt_whole - 1);
+reg  [10:0] x    = 0;
+reg  [10:0] y    = 0;
+wire [9:0]  X    = x - hz_back; // X=[0..639]
+wire [9:0]  Y    = y - vt_back; // Y=[0..479]
+
+always @(posedge i_clock_25_mhz) begin
+
+    // Кадровая развертка
+    x <= xmax ?         0 : x + 1;
+    y <= xmax ? (ymax ? 0 : y + 1) : y;
+
+    // Вывод окна видеоадаптера
+    if (x >= hz_back && x < hz_visible + hz_back &&
+        y >= vt_back && y < vt_visible + vt_back)
+    begin
+         {vga_r, vga_g, vga_b} <= X[3:0] == 0 || Y[3:0] == 0 ? 12'hFFF : {X[4]^Y[4], 3'h0, X[5]^Y[5], 3'h0, X[6]^Y[6], 3'h0};
+    end
+    else {vga_r, vga_g, vga_b} <= 12'b0;
 
 end
 
