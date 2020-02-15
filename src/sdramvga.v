@@ -1,39 +1,48 @@
 /*
- * Модуль памяти 64Мб для DE0-CV с видеопамятью 640 x 480 x (4|8|16) bit
+ * Модуль памяти 64Мб для DE0-CV с видеопамятью 640 x 480 x 16 цветов
  */
 
 module sdramvga
 (
     // Тактовая частота 100 МГц (SDRAM) 25 МГц (видео)
-    input  wire         i_clock_100_mhz,
-    input  wire         i_clock_25_mhz,
+    input  wire         clock_100_mhz,
+    input  wire         clock_25_mhz,
+
+    // Управленеи
     input  wire [25:0]  i_address,      // 64 МБ памяти
     input  wire         i_we,           // Признак записи в память
     input  wire [ 7:0]  i_data,         // Данные для записи (8 бит)
     output reg  [ 7:0]  o_data,         // Прочитанные данные
     output reg          o_ready,        // Готовность данных (=1 Готово)
 
-    // Видеоадаптер встроен в SDRAM
+    // Видеоадаптер VGA (640 x 480 x 16 цветов)
     output reg  [3:0]   vga_r,
     output reg  [3:0]   vga_g,
     output reg  [3:0]   vga_b,
     output wire         vga_hs,
     output wire         vga_vs,
 
-    // Физический интерфейс
-    output wire         dram_clk,      // Clock
-    output reg  [ 1:0]  dram_ba,       // Bank 2^2=4
-    output wire [12:0]  dram_addr,     // Address 2^13=8192
-    inout  wire [15:0]  dram_dq,       // Data I/O
-    output wire         dram_cas,      // CAS
-    output wire         dram_ras,      // RAS
-    output wire         dram_we,       // Write Enabled
-    output wire         dram_ldqm,     // Low Data QMask
-    output wire         dram_udqm      // High Data QMask
+    // Физический интерфейс DRAM
+    output wire         dram_clk,       // Тактовая частота памяти
+    output reg  [ 1:0]  dram_ba,        // 4 банка
+    output wire [12:0]  dram_addr,      // Максимальный адрес 2^13=8192
+    inout  wire [15:0]  dram_dq,        // Ввод-вывод
+    output wire         dram_cas,       // CAS
+    output wire         dram_ras,       // RAS
+    output wire         dram_we,        // WE
+    output reg          dram_ldqm,      // Маска для младшего байта
+    output reg          dram_udqm,      // Маска для старшего байта
+
+    // Буфер строки (сдвоенный)
+    output reg  [ 8:0]  vb_address_w,
+    output reg  [ 8:0]  vb_address_r,
+    output reg          vb_wren,
+    output reg  [15:0]  vb_data,        // vb[vb_address_w] = vb_data
+    input  wire [15:0]  vb_read         // vb_read = vb[vb_address_r]
 );
 
+// Параметр начального адреса видеопамяти
 parameter videomemory_start     = 0;
-parameter videomemory_row_width = 160; // 640 x 480 x 4 цвета
 
 // Command modes                 RCW
 // ---------------------------------------------------------------------
@@ -61,21 +70,20 @@ localparam init_time = 5000;
 
 initial begin
 
-    o_ready = 0;
-    dram_ba = 0;
+    o_ready   = 0;
+    dram_ba   = 0;
+    dram_ldqm = 1;
+    dram_udqm = 1;
+    vb_wren   = 0;
 
 end
 
 // Связь с физическим интерфейсом памяти
 // ---------------------------------------------------------------------
 
-// Направление данных (in, out)
+// Направление данных (in, out), если dram_we=0, то запись; иначе чтение
 assign dram_dq   =  dram_we ? 16'hZZZZ : {i_data, i_data};
-assign dram_clk  =  i_clock_100_mhz;
-
-// Активация маски записи или чтения из памяти
-assign dram_ldqm =  i_address[0];
-assign dram_udqm = ~i_address[0];
+assign dram_clk  =  clock_100_mhz;
 
 // Адрес и команда
 assign {dram_addr                  } = chipinit ? dram_init    : address;
@@ -88,17 +96,17 @@ reg  [14:0]     icounter        = 0;
 reg  [2:0]      command         = cmd_nop;
 reg  [2:0]      command_init    = cmd_nop;
 reg  [12:0]     dram_init       = 12'b1_00000_00000;
-reg  [12:0]     address    = 0;
+reg  [12:0]     address         = 0;
 reg  [24:0]     current_addr    = 0;
-reg  [ 9:0]     current_x       = 0;
-reg  [ 9:0]     current_y       = 0;
+reg  [ 7:0]     current_x       = 0;
+reg  [ 8:0]     current_y       = 0;
 reg  [ 3:0]     current_state   = state_idle;
 reg  [ 3:0]     cursor          = 0;
 
 // Инициализация чипа памяти
 // Параметры: BurstFull, Sequential, CASLatency=2
 // ---------------------------------------------------------------------
-always @(posedge i_clock_25_mhz)
+always @(posedge clock_25_mhz)
 if (chipinit) begin
 
     case (icounter)
@@ -118,50 +126,54 @@ end
 // Основной обработчик (видеокарта, ввод-вывод в память)
 // Работает после инициализации памяти
 // ---------------------------------------------------------------------
-always @(posedge i_clock_100_mhz)
+always @(posedge clock_100_mhz)
 if (~chipinit) begin
 
     case (current_state)
 
         // Режим ожидания чтения, записи, или новой строки
+        // -----------------------------------------
         state_idle: begin
 
+            // @todo Высший приоритет на установку o_ready <= 0 для чтения/записи
+
             // Требуется перезагрузка строки (если она в видеокадре)
-            if ((current_y[0] ^ Y[0]) && (Y < vt_visible)) begin
+            // 160 слов = 4 цвета каждое слово
+            if ((current_y[0] ^ Y[0]) && (Y < 480)) begin
 
-                current_y       <= Y;
-                current_addr    <= Y * videomemory_row_width + videomemory_start;
-                current_state   <= state_activate;
-                current_x       <= 0;
-                cursor          <= 1'b0;
-                o_ready         <= 1'b0;
+                current_state <= state_activate;
+                current_addr  <= Y*160 + videomemory_start;
+                current_x     <= 0;
+                current_y     <= Y;
+                cursor        <= 1'b0;
+                o_ready       <= 1'b0;
+                dram_ldqm     <= 1'b0;
+                dram_udqm     <= 1'b0;
 
             end
+            // @todo Чтение/Запись в память
             // Готовность всех данных
-            else begin
-
-                o_ready <= 1'b1;
-
-            end
+            else begin o_ready <= 1'b1; end
 
         end
 
         // Активировать строку и загрузить конвейер
+        // -----------------------------------------
         state_activate: case (cursor)
 
             // Задать банк 23:22 | 21:10 | 9:0
             0: begin
-            
+
                 cursor  <= 1;
                 command <= cmd_activate;
-                address <= current_addr[22:10];
-                dram_ba <= current_addr[24:23];
+                address <= current_addr[22:10]; // 13 бит
+                dram_ba <= current_addr[24:23]; // 2 бита
 
             end
 
-            // 1,2,3 ожидание принятия команды `activate`
+            // Ожидание принятия команды `activate` (3 такта)
 
-            // Задать адрес, и загрузить в очередь
+            // Задать текущий адрес
             4: begin
 
                 cursor  <= 5;
@@ -169,8 +181,8 @@ if (~chipinit) begin
                 address <= {1'b1, current_addr[9:0]};
 
             end
-            
-            // Активация #1 
+
+            // Активация #1
             5: begin
 
                 cursor       <= 6;
@@ -183,17 +195,79 @@ if (~chipinit) begin
             6: begin
 
                 cursor        <= 0;
-                current_state <= state_activate;
+                current_state <= state_update;
                 current_addr  <= current_addr + 1;
                 address[9:0]  <= address[9:0] + 1;
-                
+
             end
-            
+
             // По умолчанию NOP
             default: begin
 
                 command <= cmd_nop;
                 cursor  <= cursor + 1;
+
+            end
+
+        endcase
+
+        // Последовательное считывание из памяти
+        // -----------------------------------------
+        state_update: begin
+
+            // Запись в необходимую ячейку
+            vb_wren      <= 1;
+            vb_address_w <= {~Y[0], current_x[7:0]};
+            vb_data      <= dram_dq;
+
+            // Смещение в памяти
+            current_addr <= current_addr + 1;
+            current_x    <= current_x + 1;
+            address[9:0] <= address[9:0] + 1;
+
+            // Закрыть строку по завершении
+            // Закрыть строку, если достигли конца банка
+            if (current_x == 159 || (address[9:0] == 10'h001))
+                current_state <= state_close_row;
+
+        end
+
+        // Закрыть строку
+        // -----------------------------------------
+        state_close_row: case (cursor)
+
+            // Перезарядка банков, отключить запись
+            0: begin
+
+                command     <= cmd_precharge;
+                address[10] <= 1'b1;
+                vb_wren     <= 1'b0;
+                cursor      <= 1;
+
+            end
+
+            // Ожидание завершения перезарядки банка
+            1: begin cursor <= 2; command <= cmd_nop; end
+
+            // Решение о продлении считывания из памяти
+            2: begin
+
+                // Продление считывания из памяти
+                if (current_x < 160) begin
+
+                    cursor        <= 0;
+                    current_state <= state_activate;
+                    current_addr  <= current_addr - 2;
+
+                end
+                // Строка закончилась, переход к IDLE
+                else begin
+
+                    current_state <= state_idle;
+                    dram_ldqm     <= 1'b1;
+                    dram_udqm     <= 1'b1;
+
+                end
 
             end
 
@@ -230,10 +304,16 @@ wire        xmax = (x == hz_whole - 1);
 wire        ymax = (y == vt_whole - 1);
 reg  [10:0] x    = 0;
 reg  [10:0] y    = 0;
-wire [9:0]  X    = x - hz_back; // X=[0..639]
-wire [9:0]  Y    = y - vt_back; // Y=[0..479]
+wire [9:0]  X    = x - hz_back;     // X=[0..639]
+wire [8:0]  Y    = y - vt_back;     // Y=[0..479]
 
-always @(posedge i_clock_25_mhz) begin
+// Вычисление цвета
+reg  [ 2:0] color_id;
+reg  [11:0] color_rgb;
+reg  [ 1:0] color_ax;
+
+// Реализация пиксельного буфера
+always @(posedge clock_25_mhz) begin
 
     // Кадровая развертка
     x <= xmax ?         0 : x + 1;
@@ -243,9 +323,45 @@ always @(posedge i_clock_25_mhz) begin
     if (x >= hz_back && x < hz_visible + hz_back &&
         y >= vt_back && y < vt_visible + vt_back)
     begin
-         {vga_r, vga_g, vga_b} <= X[3:0] == 0 || Y[3:0] == 0 ? 12'hFFF : {X[4]^Y[4], 3'h0, X[5]^Y[5], 3'h0, X[6]^Y[6], 3'h0};
+         {vga_r, vga_g, vga_b} <= color_rgb; // T=4
     end
     else {vga_r, vga_g, vga_b} <= 12'b0;
+
+    // T=3 Декодирование цвета
+    case (color_id)
+
+        4'b0000: color_rgb <= 12'h000;
+        4'b0001: color_rgb <= 12'h008;
+        4'b0010: color_rgb <= 12'h080;
+        4'b0011: color_rgb <= 12'h088;
+        4'b0100: color_rgb <= 12'h800;
+        4'b0101: color_rgb <= 12'h808;
+        4'b0110: color_rgb <= 12'h880;
+        4'b0111: color_rgb <= 12'hccc;
+        4'b1000: color_rgb <= 12'h888;
+        4'b1001: color_rgb <= 12'h00f;
+        4'b1010: color_rgb <= 12'h0f0;
+        4'b1011: color_rgb <= 12'h0ff;
+        4'b1100: color_rgb <= 12'hf00;
+        4'b1101: color_rgb <= 12'hf0f;
+        4'b1110: color_rgb <= 12'hff0;
+        4'b1111: color_rgb <= 12'hfff;
+
+    endcase
+
+    // T=2 Декодирование ниббла
+    case (color_ax)
+
+        2'b00: color_id <= vb_read[15:12];
+        2'b01: color_id <= vb_read[11:8];
+        2'b10: color_id <= vb_read[ 7:4];
+        2'b11: color_id <= vb_read[ 3:0];
+
+    endcase
+
+    // T=1 Следующий пиксель
+    vb_address_r <= {Y[0], X[9:2]};
+    color_ax     <=  X[1:0];
 
 end
 

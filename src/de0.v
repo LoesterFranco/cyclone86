@@ -137,21 +137,59 @@ always @(posedge CLOCK_50) begin
 end
 
 // -----------------------------------------------------------------------
-// Видеодаптер
+// Модуль SDRAM и видеоадаптер
 // -----------------------------------------------------------------------
+
+assign DRAM_CKE  = 1; // ChipEnable
+assign DRAM_CS_N = 0; // ChipSelect
+
+wire [ 8:0] vb_address_w;
+wire [ 8:0] vb_address_r;
+wire [15:0] vb_data;
+wire [15:0] vb_read;
+wire        vb_wren;
 
 sdramvga u1
 (
     // Тактовая частота 100 МГц (SDRAM) 25 МГц (видео)
-    .i_clock_100_mhz    (clock_100),
-    .i_clock_25_mhz     (clock_25),
+    .clock_100_mhz  (clock_100),
+    .clock_25_mhz   (clock_25),
+
+    // Физический интерфейс
+    .dram_clk       (DRAM_CLK),
+    .dram_ba        (DRAM_BA),
+    .dram_addr      (DRAM_ADDR),
+    .dram_dq        (DRAM_DQ),
+    .dram_cas       (DRAM_CAS_N),
+    .dram_ras       (DRAM_RAS_N),
+    .dram_we        (DRAM_WE_N),
+    .dram_ldqm      (DRAM_LDQM),
+    .dram_udqm      (DRAM_UDQM),
 
     // Видеоадаптер встроен в SDRAM
-    .vga_r  (VGA_R),
-    .vga_g  (VGA_G),
-    .vga_b  (VGA_B),
-    .vga_hs (VGA_HS),
-    .vga_vs (VGA_VS),
+    .vga_r          (VGA_R),
+    .vga_g          (VGA_G),
+    .vga_b          (VGA_B),
+    .vga_hs         (VGA_HS),
+    .vga_vs         (VGA_VS),
+
+    // Буфер строки
+    .vb_address_w   (vb_address_w),
+    .vb_address_r   (vb_address_r),
+    .vb_wren        (vb_wren),
+    .vb_data        (vb_data),
+    .vb_read        (vb_read)
+);
+
+// Буфер для видеострок
+sdramvb u2(
+
+    .clock          (clock_100),
+    .address_a      (vb_address_w),
+    .address_b      (vb_address_r),
+    .data_a         (vb_data),
+    .wren_a         (vb_wren),
+    .q_b            (vb_read)
 );
 
 endmodule
