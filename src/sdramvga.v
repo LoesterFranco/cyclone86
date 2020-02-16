@@ -1,5 +1,12 @@
 /*
  * Модуль памяти 64Мб для DE0-CV с видеопамятью 640 x 480 x 16 цветов
+ * Видеопамять размещается по адресу (в байтах)
+ * $00004 - $3C004 (240Kb)
+ * Длина одной строки 512 байт, эффективный 320 байт
+ * Начало строки находится в START = Y*512
+ * 1 байт содержит в себе 2 ниббла:
+ * a) старший цвет - левый  [7:4]
+ * b) младший цвет - правый [3:0]
  */
 
 module sdramvga
@@ -42,7 +49,7 @@ module sdramvga
 );
 
 // Параметр начального адреса видеопамяти
-parameter videomemory_start     = 0;
+parameter videomemory_start     = 2;
 
 // Command modes                 RCW
 // ---------------------------------------------------------------------
@@ -157,7 +164,7 @@ if (~chipinit) begin
             else if ((current_y ^ Y[0]) && (Y < 480)) begin
 
                 current_state <= state_activate;
-                current_addr  <= Y*256 + 2 + videomemory_start; // 160
+                current_addr  <= Y*256 + videomemory_start;
                 current_x     <= 0;
                 current_y     <= Y[0];
                 cursor        <= 1'b0;
@@ -181,7 +188,7 @@ if (~chipinit) begin
                 dram_ldqm     <= ~w_address[0];
 
             end
-            
+
             // Готовность всех данных
             else begin o_ready <= 1'b1; end
 
@@ -208,7 +215,7 @@ if (~chipinit) begin
 
                 cursor  <= 5;
                 command <= cmd_read;
-                address <= {1'b1, current_addr[9:0]};
+                address <= {1'b0, current_addr[9:0]};
 
             end
 
@@ -216,7 +223,7 @@ if (~chipinit) begin
             5: begin
 
                 cursor       <= cursor + 1;
-                current_addr <= current_addr + 1;
+                //current_addr <= current_addr + 1;
                 address[9:0] <= address[9:0] + 1;
 
             end
@@ -226,7 +233,7 @@ if (~chipinit) begin
 
                 cursor        <= 0;
                 current_state <= state_update;
-                current_addr  <= current_addr + 1;
+                //current_addr  <= current_addr + 1;
                 address[9:0]  <= address[9:0] + 1;
 
             end
@@ -251,7 +258,7 @@ if (~chipinit) begin
             vb_data      <= dram_dq;
 
             // Смещение в памяти
-            current_addr <= current_addr + 1;
+            //current_addr <= current_addr + 1;
             current_x    <= current_x + 1;
             address[9:0] <= address[9:0] + 1;
 
@@ -290,7 +297,7 @@ if (~chipinit) begin
 
             // Запись
             2: begin
-            
+
                 cursor  <= 3;
                 command <= cmd_write;
                 address <= {1'b1, current_addr[9:0]};
@@ -299,7 +306,7 @@ if (~chipinit) begin
 
             // Перезарядка банка, закрытие строки
             5: begin
-            
+
                 cursor      <= 6;
                 command     <= cmd_precharge;
                 address[10] <= 1'b1;
