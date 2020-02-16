@@ -100,14 +100,15 @@ pll u0(
 assign DRAM_CKE  = 1; // ChipEnable
 assign DRAM_CS_N = 0; // ChipSelect
 
-wire [25:0] address;
-wire [7:0]  i_data;
-wire [7:0]  o_data;
-wire        wren;
-wire        ready;
+wire [ 8:0] vb_address_w;
+wire [ 8:0] vb_address_r;
+wire [15:0] vb_data;
+wire [15:0] vb_read;
+wire        vb_wren;
 
-/*
-sdram u1
+wire ready;
+
+sdramvga u1
 (
     // Тактовая частота 100 МГц (SDRAM) 25 МГц (видео)
     .clock_100_mhz  (clock_100),
@@ -116,8 +117,8 @@ sdram u1
     // Интерфейс процессора
     .i_address      (address),
     .i_we           (wren),
-    .i_data         (i_data),
-    .o_data         (o_data),
+    .i_data         (data),
+    //.o_data()
     .o_ready        (ready),
 
     // Физический интерфейс
@@ -129,9 +130,66 @@ sdram u1
     .dram_ras       (DRAM_RAS_N),
     .dram_we        (DRAM_WE_N),
     .dram_ldqm      (DRAM_LDQM),
-    .dram_udqm      (DRAM_UDQM)
+    .dram_udqm      (DRAM_UDQM),
+
+    // Видеоадаптер встроен в SDRAM
+    .vga_r          (VGA_R),
+    .vga_g          (VGA_G),
+    .vga_b          (VGA_B),
+    .vga_hs         (VGA_HS),
+    .vga_vs         (VGA_VS),
+
+    // Буфер строки
+    .vb_address_w   (vb_address_w),
+    .vb_address_r   (vb_address_r),
+    .vb_wren        (vb_wren),
+    .vb_data        (vb_data),
+    .vb_read        (vb_read)
 );
-*/
+
+// Буфер для видеострок
+sdramvb u2
+(
+    .clock          (clock_100),
+    .address_a      (vb_address_w),
+    .address_b      (vb_address_r),
+    .data_a         (vb_data),
+    .wren_a         (vb_wren),
+    .q_b            (vb_read)
+);
+
+
+// ------------------------------------
+reg [9:0]   ct; // 9:0
+reg [25:0]  address = 0;
+reg [7:0]   data;
+reg         wren;
+
+// 1 строка занимает 512 байт (но использует только 320 байт)
+always @(posedge clock_25) if (ready) begin
+
+    /*
+    data    <= 8'h33;
+    address <= address < 512*480 ? address + 1 : 0;
+    wren    <= 1;
+    */
+
+    if (ct == 0 && KEY[0] == 0) begin
+
+        address <= address < 320*200 ? address + 1 : 0;
+        data <= KEY[1] ? 
+        {
+            address[3:0] ^ address[13:10],
+            address[3:0] ^ address[13:10]
+        } : 8'h29;
+        wren <= 1;
+
+    end
+    else begin wren <= 0; end
+
+    ct <= ct + 1;
+
+end
 
 endmodule
 
