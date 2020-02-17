@@ -100,13 +100,14 @@ pll u0(
 assign DRAM_CKE  = 1; // ChipEnable
 assign DRAM_CS_N = 0; // ChipSelect
 
+/*
+
 wire [25:0] address;
 wire [7:0]  i_data;
 wire [7:0]  o_data;
 wire        wren;
 wire        ready;
 
-/*
 sdram u1
 (
     // Тактовая частота 100 МГц (SDRAM) 25 МГц (видео)
@@ -131,6 +132,24 @@ sdram u1
     .dram_ldqm      (DRAM_LDQM),
     .dram_udqm      (DRAM_UDQM)
 );
+*/
+
+/*
+reg [31:0] rand = 32'h12345678;
+always @(posedge clock_25)
+    rand <= {rand[31] ^ rand[30] ^ rand[29] ^ rand[27] ^ rand[25] ^ rand[0], rand[31:1]};
+
+decoder u1
+(
+    //                   F  E  D  C  B  A  9  8  7  6  5  4  3  2  1  0
+    //.i_codebuf  (128'h00_00_00_00_00_00_00_00_00_00_00_00_0F_66_67_26),
+    .i_codebuf  ({rand, rand, rand, rand}),
+    .align      (rand[1:0]),
+    .led        (LEDR)
+);
+
+reg [1:0] cnt = 0;
+always @(negedge KEY[0])  cnt <= cnt + 1;
 */
 
 endmodule
