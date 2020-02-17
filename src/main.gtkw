@@ -1,36 +1,171 @@
 [*]
 [*] GTKWave Analyzer v3.3.86 (w)1999-2017 BSI
-[*] Fri Feb  7 05:50:46 2020
+[*] Mon Feb 17 11:01:22 2020
 [*]
-[dumpfile] "/disk/dev/de0x86/src/main.vcd"
-[dumpfile_mtime] "Fri Feb  7 05:50:32 2020"
-[dumpfile_size] 60450
-[savefile] "/disk/dev/de0x86/src/main.gtkw"
+[dumpfile] "/disk/dev/cyclone86/src/main.vcd"
+[dumpfile_mtime] "Mon Feb 17 11:00:58 2020"
+[dumpfile_size] 42494
+[savefile] "/disk/dev/cyclone86/src/main.gtkw"
 [timestart] 0
 [size] 1920 1029
 [pos] -1 -1
-*-6.000000 21 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+*-6.000000 4 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] main.
 [sst_width] 248
-[signals_width] 208
+[signals_width] 246
 [sst_expanded] 1
-[sst_vpaned_height] 305
+[sst_vpaned_height] 308
 @28
 [color] 3
 main.clk
 [color] 3
 main.clock
 @22
-[color] 2
-main.u0.cstate[7:0]
-main.u0.opcode[8:0]
-[color] 4
-main.u0.address[19:0]
-@29
-[color] 2
-main.u0.wr
-@22
-main.u0.i_data[7:0]
-main.u0.o_data[7:0]
+main.u1.i_codebuf[127:0]
+main.u1.b_codebuf[127:0]
+@c00023
+main.u1.codebuf[127:0]
+@28
+(0)main.u1.codebuf[127:0]
+(1)main.u1.codebuf[127:0]
+(2)main.u1.codebuf[127:0]
+(3)main.u1.codebuf[127:0]
+(4)main.u1.codebuf[127:0]
+(5)main.u1.codebuf[127:0]
+(6)main.u1.codebuf[127:0]
+(7)main.u1.codebuf[127:0]
+(8)main.u1.codebuf[127:0]
+(9)main.u1.codebuf[127:0]
+(10)main.u1.codebuf[127:0]
+(11)main.u1.codebuf[127:0]
+(12)main.u1.codebuf[127:0]
+(13)main.u1.codebuf[127:0]
+(14)main.u1.codebuf[127:0]
+(15)main.u1.codebuf[127:0]
+(16)main.u1.codebuf[127:0]
+(17)main.u1.codebuf[127:0]
+(18)main.u1.codebuf[127:0]
+(19)main.u1.codebuf[127:0]
+(20)main.u1.codebuf[127:0]
+(21)main.u1.codebuf[127:0]
+(22)main.u1.codebuf[127:0]
+(23)main.u1.codebuf[127:0]
+(24)main.u1.codebuf[127:0]
+(25)main.u1.codebuf[127:0]
+(26)main.u1.codebuf[127:0]
+(27)main.u1.codebuf[127:0]
+(28)main.u1.codebuf[127:0]
+(29)main.u1.codebuf[127:0]
+(30)main.u1.codebuf[127:0]
+(31)main.u1.codebuf[127:0]
+(32)main.u1.codebuf[127:0]
+(33)main.u1.codebuf[127:0]
+(34)main.u1.codebuf[127:0]
+(35)main.u1.codebuf[127:0]
+(36)main.u1.codebuf[127:0]
+(37)main.u1.codebuf[127:0]
+(38)main.u1.codebuf[127:0]
+(39)main.u1.codebuf[127:0]
+(40)main.u1.codebuf[127:0]
+(41)main.u1.codebuf[127:0]
+(42)main.u1.codebuf[127:0]
+(43)main.u1.codebuf[127:0]
+(44)main.u1.codebuf[127:0]
+(45)main.u1.codebuf[127:0]
+(46)main.u1.codebuf[127:0]
+(47)main.u1.codebuf[127:0]
+(48)main.u1.codebuf[127:0]
+(49)main.u1.codebuf[127:0]
+(50)main.u1.codebuf[127:0]
+(51)main.u1.codebuf[127:0]
+(52)main.u1.codebuf[127:0]
+(53)main.u1.codebuf[127:0]
+(54)main.u1.codebuf[127:0]
+(55)main.u1.codebuf[127:0]
+(56)main.u1.codebuf[127:0]
+(57)main.u1.codebuf[127:0]
+(58)main.u1.codebuf[127:0]
+(59)main.u1.codebuf[127:0]
+(60)main.u1.codebuf[127:0]
+(61)main.u1.codebuf[127:0]
+(62)main.u1.codebuf[127:0]
+(63)main.u1.codebuf[127:0]
+(64)main.u1.codebuf[127:0]
+(65)main.u1.codebuf[127:0]
+(66)main.u1.codebuf[127:0]
+(67)main.u1.codebuf[127:0]
+(68)main.u1.codebuf[127:0]
+(69)main.u1.codebuf[127:0]
+(70)main.u1.codebuf[127:0]
+(71)main.u1.codebuf[127:0]
+(72)main.u1.codebuf[127:0]
+(73)main.u1.codebuf[127:0]
+(74)main.u1.codebuf[127:0]
+(75)main.u1.codebuf[127:0]
+(76)main.u1.codebuf[127:0]
+(77)main.u1.codebuf[127:0]
+(78)main.u1.codebuf[127:0]
+(79)main.u1.codebuf[127:0]
+(80)main.u1.codebuf[127:0]
+(81)main.u1.codebuf[127:0]
+(82)main.u1.codebuf[127:0]
+(83)main.u1.codebuf[127:0]
+(84)main.u1.codebuf[127:0]
+(85)main.u1.codebuf[127:0]
+(86)main.u1.codebuf[127:0]
+(87)main.u1.codebuf[127:0]
+(88)main.u1.codebuf[127:0]
+(89)main.u1.codebuf[127:0]
+(90)main.u1.codebuf[127:0]
+(91)main.u1.codebuf[127:0]
+(92)main.u1.codebuf[127:0]
+(93)main.u1.codebuf[127:0]
+(94)main.u1.codebuf[127:0]
+(95)main.u1.codebuf[127:0]
+(96)main.u1.codebuf[127:0]
+(97)main.u1.codebuf[127:0]
+(98)main.u1.codebuf[127:0]
+(99)main.u1.codebuf[127:0]
+(100)main.u1.codebuf[127:0]
+(101)main.u1.codebuf[127:0]
+(102)main.u1.codebuf[127:0]
+(103)main.u1.codebuf[127:0]
+(104)main.u1.codebuf[127:0]
+(105)main.u1.codebuf[127:0]
+(106)main.u1.codebuf[127:0]
+(107)main.u1.codebuf[127:0]
+(108)main.u1.codebuf[127:0]
+(109)main.u1.codebuf[127:0]
+(110)main.u1.codebuf[127:0]
+(111)main.u1.codebuf[127:0]
+(112)main.u1.codebuf[127:0]
+(113)main.u1.codebuf[127:0]
+(114)main.u1.codebuf[127:0]
+(115)main.u1.codebuf[127:0]
+(116)main.u1.codebuf[127:0]
+(117)main.u1.codebuf[127:0]
+(118)main.u1.codebuf[127:0]
+(119)main.u1.codebuf[127:0]
+(120)main.u1.codebuf[127:0]
+(121)main.u1.codebuf[127:0]
+(122)main.u1.codebuf[127:0]
+(123)main.u1.codebuf[127:0]
+(124)main.u1.codebuf[127:0]
+(125)main.u1.codebuf[127:0]
+(126)main.u1.codebuf[127:0]
+(127)main.u1.codebuf[127:0]
+@1401201
+-group_end
+@28
+main.u1.align[1:0]
+main.u1.p_cont[2:0]
+main.u1.p_ext
+main.u1.p_invalid
+main.u1.p_opsize
+main.u1.p_adsize
+main.u1.p_over_seg[2:0]
+main.u1.p_override
+main.u1.p_rep[1:0]
+main.u1.p_size[2:0]
 [pattern_trace] 1
 [pattern_trace] 0
